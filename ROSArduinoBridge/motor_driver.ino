@@ -135,8 +135,9 @@ void setupPWM_Timer1(int pwm_freq_hz) {
     setMotorSpeed(LEFT, leftSpeed);
     setMotorSpeed(RIGHT, rightSpeed);
   }
-#elif ESDA_AC_MOTOR_DRIVER
-  /*Set 1500 as default frequency anything greater than 1600 set as forward, anything below 1400 reverse, do not allowing 1400-1600, stop 0, no init()*/
+ /*
+#elif defined ESDA_AC_MOTOR_DRIVER
+
   void initMotorController(){
     pinMode(MOTOR_LEFT, OUTPUT);
     pinMode(MOTOR_RIGHT, OUTPUT);
@@ -147,10 +148,10 @@ void setupPWM_Timer1(int pwm_freq_hz) {
 
   void setMotorSpeed(int i, int spd) {
     if (i == LEFT) {
-      setMotorFreq(MOTOR_LEFT_idx, sped);
+      setMotorFreq(MOTOR_LEFT_idx, spd);
     }
     else {
-      setMotorFreq(MOTOR_RIGHT_idx, sped);
+      setMotorFreq(MOTOR_RIGHT_idx, spd);
     }
   }
   
@@ -158,7 +159,7 @@ void setupPWM_Timer1(int pwm_freq_hz) {
     setMotorSpeed(LEFT, leftSpeed);
     setMotorSpeed(RIGHT, rightSpeed);
   }
-
+  */
 #else
   #error A motor driver must be selected!
 #endif
