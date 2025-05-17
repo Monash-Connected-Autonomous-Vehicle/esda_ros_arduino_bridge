@@ -50,8 +50,19 @@
 
 /* Define the motor controller and encoder library you are using */
 #ifdef USE_BASE
-   /* ESDA AC MOTOR*/
-   #undef ARDUINO_ENC_COUNTER // Remove Encoder
+   /* The Pololu VNH5019 dual motor driver shield */
+   //#define POLOLU_VNH5019
+
+   /* The Pololu MC33926 dual motor driver shield */
+   //#define POLOLU_MC33926
+
+   /* The RoboGaia encoder shield */
+   //#define ROBOGAIA
+   
+   /* Encoders directly attached to Arduino board */
+   //#define ARDUINO_ENC_COUNTER
+
+   /* L298 Motor driver*/
    #define ESDA_AC_MOTOR_DRIVER
 #endif
 
@@ -90,7 +101,7 @@
   /*#include "encoder_driver.h"*/
 
   /* PID parameters and functions */
-  /*#include "diff_controller.h"*/
+  #include "diff_controller.h"
 
   /* Run the PID loop at 30 times per second */
   /*#define PID_RATE           30     // Hz*/
@@ -103,8 +114,8 @@
 
   /* Stop the robot if it hasn't received a movement command
    in this number of milliseconds */
-  /*#define AUTO_STOP_INTERVAL 2000
-  long lastMotorCommand = AUTO_STOP_INTERVAL;*/
+  #define AUTO_STOP_INTERVAL 2000
+  long lastMotorCommand = AUTO_STOP_INTERVAL;
 #endif
 
 /* Variable initialization */
@@ -187,39 +198,37 @@ int runCommand() {
 
 #ifdef USE_BASE
   case READ_ENCODERS:
-    //No Encoder
-    Serial.print("No Encoder");
+    Serial.print(readEncoder(LEFT));
+    Serial.print(" ");
+    Serial.println(readEncoder(RIGHT));
     break;
    case RESET_ENCODERS:
-    //No Encoder
-    Serial.print("No Encoder");
+    resetEncoders();
+    resetPID();
+    Serial.println("OK");
     break;
   case MOTOR_SPEEDS:
-    //lastMotorCommand = millis();
-    // Define No Moving 
+    /* Reset the auto stop timer */
+    lastMotorCommand = millis();
     if (arg1 == 0 && arg2 == 0) {
       setMotorSpeeds(0, 0);
-      //moving = 0;
+      resetPID();
+      moving = 0;
     }
-    // Define Moving 
-    //moving = 1; // Sneaky way to temporarily disable the PID
-    setMotorSpeeds(arg1, arg2);
+    else moving = 1;
+    leftPID.TargetTicksPerFrame = arg1;
+    rightPID.TargetTicksPerFrame = arg2;
     Serial.println("OK"); 
     break;
   case MOTOR_RAW_PWM:
-    //lastMotorCommand = millis();
-    // Define No Moving 
-    if (arg1 == 0 && arg2 == 0) {
-      setMotorSpeeds(0, 0);
-      //moving = 0;
-    }
-    // Define Moving 
-    //moving = 1; // Sneaky way to temporarily disable the PID
+    /* Reset the auto stop timer */
+    lastMotorCommand = millis();
+    resetPID();
+    moving = 0; // Sneaky way to temporarily disable the PID
     setMotorSpeeds(arg1, arg2);
     Serial.println("OK"); 
     break;
   case UPDATE_PID:
-    /*
     while ((str = strtok_r(p, ":", &p)) != NULL) {
        pid_args[i] = atoi(str);
        i++;
@@ -228,8 +237,7 @@ int runCommand() {
     Kd = pid_args[1];
     Ki = pid_args[2];
     Ko = pid_args[3];
-    */
-    Serial.println("No PID");
+    Serial.println("OK");
     break;
 #endif
   default:
@@ -244,7 +252,6 @@ void setup() {
 
 // Initialize the motor controller if used */
 #ifdef USE_BASE
-  /*
   #ifdef ARDUINO_ENC_COUNTER
     //set as inputs
     DDRD &= ~(1<<LEFT_ENC_PIN_A);
@@ -266,9 +273,8 @@ void setup() {
     // enable PCINT1 and PCINT2 interrupt in the general interrupt mask
     PCICR |= (1 << PCIE1) | (1 << PCIE2);
   #endif
-  */
   initMotorController();
-  //resetPID();
+  resetPID();
 #endif
 
 /* Attach servos if used */
@@ -330,9 +336,7 @@ void loop() {
   }
   
 // If we are using base control, run a PID calculation at the appropriate intervals
-/*
 #ifdef USE_BASE
-
   if (millis() > nextPID) {
     updatePID();
     nextPID += PID_INTERVAL;
@@ -344,7 +348,7 @@ void loop() {
     moving = 0;
   }
 #endif
-*/
+
 // Sweep servos
 
 #ifdef USE_SERVOS

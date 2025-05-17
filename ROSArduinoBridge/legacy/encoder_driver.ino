@@ -27,6 +27,7 @@
     if (i == LEFT) return encoders.YAxisReset();
     else return encoders.XAxisReset();
   }
+  
 #elif defined(ARDUINO_ENC_COUNTER)
   volatile long left_enc_pos = 0L;
   volatile long right_enc_pos = 0L;
@@ -79,4 +80,3 @@ void resetEncoders() {
 }
 
 #endif
-

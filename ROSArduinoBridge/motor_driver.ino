@@ -1,61 +1,3 @@
-void setMotorFreq(int motor, int speed) {
-  if (speed == 0) {
-    // Disable output
-    if (motor == 1) TCCR1A &= ~_BV(COM1A1); // Disconnect OC1A
-    if (motor == 2) TCCR1A &= ~_BV(COM1B1); // Disconnect OC1B
-    return;
-  }
-
-  // Calculate frequency
-  int freq;
-  if (speed < 0) {
-    // Map [-255, -1] → [1000, 1399]
-    freq = map(speed, -255, -1, 1000, 1399);
-  } else {
-    // Map [1, 255] → [1601, 2000]
-    freq = map(speed, 1, 255, 1601, 2000);
-  }
-
-  // Setup Timer1 for this frequency
-  setupPWM_Timer1(freq);
-
-  // Re-enable channel output
-  if (motor == 1) TCCR1A |= _BV(COM1A1);
-  if (motor == 2) TCCR1A |= _BV(COM1B1);
-
-  // Duty cycle = 50%
-  OCR1A = ICR1 / 2;
-  OCR1B = ICR1 / 2;
-}
-
-/***************************************************************
-   Motor driver definitions
-   
-   Add a "#elif defined" block to this file to include support
-   for a particular motor driver.  Then add the appropriate
-   #define near the top of the main ROSArduinoBridge.ino file.
-   
-   *************************************************************/
-
-void setupPWM_Timer1(int pwm_freq_hz) {
-  const long clock = 16000000;
-  int top;
-
-  if ((top = clock / (pwm_freq_hz * 1) - 1) <= 65535) {
-    TCCR1B = _BV(WGM13) | _BV(WGM12) | _BV(CS10);
-  } else if ((top = clock / (pwm_freq_hz * 8) - 1) <= 65535) {
-    TCCR1B = _BV(WGM13) | _BV(WGM12) | _BV(CS11);
-  } else if ((top = clock / (pwm_freq_hz * 64) - 1) <= 65535) {
-    TCCR1B = _BV(WGM13) | _BV(WGM12) | _BV(CS11) | _BV(CS10);
-  } else {
-    return;
-  }
-
-  TCCR1A = _BV(WGM11);  // Clear COM1x1 for now, will enable in setMotorFreq
-  ICR1 = top;
-}
-
-
 #ifdef USE_BASE
    
 #ifdef POLOLU_VNH5019
@@ -135,17 +77,47 @@ void setupPWM_Timer1(int pwm_freq_hz) {
     setMotorSpeed(LEFT, leftSpeed);
     setMotorSpeed(RIGHT, rightSpeed);
   }
- /*
+ 
 #elif defined ESDA_AC_MOTOR_DRIVER
-
+  #include <Servo.h>
+  Servo Servo_l;
+  Servo Servo_r;
+  
   void initMotorController(){
-    pinMode(MOTOR_LEFT, OUTPUT);
-    pinMode(MOTOR_RIGHT, OUTPUT);
-    setMotorFreq(MOTOR_LEFT_idx, 0);
-    setMotorFreq(MOTOR_RIGHT_idx, 0);
-    
+    /*Define the Servo Pins*/
+    Servo_l.attach(MOTOR_LEFT);
+    Servo_r.attach(MOTOR_RIGHT);
+
+    Servo_l.writeMicroseconds(1500);  // Gearing Left Motor
+    Servo_r.writeMicroseconds(1500);  // Gearing Right Motor
+    delay(3000);
   }
 
+  void setMotorFreq(int motor_idx, int spd) {
+    spd = constrain(spd, -255, 255); // Ensure speed is within valid range
+    
+    int us;
+    if (spd == 0) {
+      us = 1500; // Stop command within the 1450-1550 stop zone
+    } else if (spd < 0) {
+      // Map reverse speeds (-255 to -1) to 1200-1400 μs
+      us = map(spd, -255, -1, 1200, 1400);
+    } else {
+      // Map forward speeds (1 to 255) to 1600-1800 μs
+      us = map(spd, 1, 255, 1600, 1800);
+    }
+
+    // Clamp the output to valid ranges (some ESCs require strict boundaries)
+    us = constrain(us, 1200, 1800);
+    
+    // Apply the command to the appropriate motor
+    if (motor_idx == MOTOR_LEFT_idx) {
+      Servo_l.writeMicroseconds(us);
+    } else {
+      Servo_r.writeMicroseconds(us);
+    }
+  }
+  
   void setMotorSpeed(int i, int spd) {
     if (i == LEFT) {
       setMotorFreq(MOTOR_LEFT_idx, spd);
@@ -159,7 +131,7 @@ void setupPWM_Timer1(int pwm_freq_hz) {
     setMotorSpeed(LEFT, leftSpeed);
     setMotorSpeed(RIGHT, rightSpeed);
   }
-  */
+ 
 #else
   #error A motor driver must be selected!
 #endif
